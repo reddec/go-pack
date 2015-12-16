@@ -12,7 +12,7 @@ import (
 const ServiceConfigFile = "service.conf"
 type Service struct {
 	Env          map[string]string `json:"env,omitempty"`
-	Params       []string`json:"params,omitempty"`
+	RunOpts      string`json:"opts,omitempty"`
 	Restart      bool`json:"restart"`
 	AutoStart    bool`json:"autostart"`
 	RestartDelay int`json:"restartDelay"`
@@ -127,11 +127,7 @@ func (d *Descriptor) FillTemplates() {
 			d.mustTemplate(&tmp)
 			d.Service.Env[k] = tmp
 		}
-		for i, v := range d.Service.Params {
-			tmp := v
-			d.mustTemplate(&tmp)
-			d.Service.Params[i] = tmp
-		}
+		d.Service.RunOpts = mustTemplate(d.Service.RunOpts, *d)
 	}
 
 	d.mustTemplate(&(d.TargetResourcesDir))
@@ -214,7 +210,7 @@ func (d *Descriptor) ServiceConfig() string {
 {{$key}}="$value"
 {{end}}
 `
-	return mustTemplate(t, *d) + "RUN_OPTS=\"" + strings.Join(d.Service.Params, " ") + "\""
+	return mustTemplate(t, *d) + "RUN_OPTS=\"" + d.Service.RunOpts + "\""
 }
 
 

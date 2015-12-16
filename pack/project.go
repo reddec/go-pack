@@ -177,7 +177,7 @@ func SaveNewService(dir, packet string) error {
 		AutoStart:true,
 		Restart:true,
 		RestartDelay:5,
-		Params:[]string{},
+		RunOpts:"",
 		Env:map[string]string{},
 	}
 	t, err := json.MarshalIndent(d, "", "    ")
