@@ -160,7 +160,17 @@ Maintainer: {{.Author}}
 func (d *Descriptor) PreInstall() string {
 	t := ""
 	if d.Service != nil {
-		t += mustTemplate("service {{.BinName}} stop || echo 'No installed {{.Group}} {{.Name}} instance running'", *d)
+		t += mustTemplate("service {{.BinName}} stop || echo 'No installed {{.Group}} {{.Name}} instance running'\n", *d)
+		// Backup
+
+		t += mustTemplate(`# backup old configuration
+BACKUP_DIR="/tmp/backups/{{.Group}}/{{.Name}}"
+if [ -d "$BACKUP_DIR" ]; then
+    rm -rf $BACKUP_DIR
+    mkdir $BACKUP_DIR
+    cp -r "{{.TargetConfDir}}"/* "$BACKUP_DIR"/
+fi
+`, *d)
 	}
 	return t
 }
@@ -169,8 +179,14 @@ func (d *Descriptor) PostInstall() string {
 	t := ""
 	if d.Service != nil {
 		if d.Service.AutoStart {
-			t += mustTemplate("service {{.BinName}} start || echo 'No {{.Group}} {{.Name}} instance'", *d)
+			t += mustTemplate("service {{.BinName}} start || echo 'No {{.Group}} {{.Name}} instance'\n", *d)
 		}
+		t += mustTemplate(`# restore old configuration
+BACKUP_DIR="/tmp/backups/{{.Group}}/{{.Name}}"
+if [ -d "$BACKUP_DIR" ]; then
+    cp -r "$BACKUP_DIR"/* "{{.TargetConfDir}}"/ && rm -rf "$BACKUP_DIR"
+fi
+`, *d)
 	}
 	return t
 }
