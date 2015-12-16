@@ -82,9 +82,9 @@ func (pr *Project) Make(resultDir string) error {
 		}
 	}
 
-	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall(), getFileOrScript(pr.Descriptor.PreInst))
-	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall(), getFileOrScript(pr.Descriptor.PostInst))
-	pr.PreRemove = append(pr.PreRemove, pr.Descriptor.PreRemove(), getFileOrScript(pr.Descriptor.PreRm))
+	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PreInst), pr.Descriptor))
+	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PostInst), pr.Descriptor))
+	pr.PreRemove = append(pr.PreRemove, pr.Descriptor.PreRemove(), mustTemplate(getFileOrScript(pr.Descriptor.PreRm), pr.Descriptor))
 
 
 

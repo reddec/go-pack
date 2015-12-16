@@ -1,7 +1,7 @@
 {
   "group": "go",
   "name": "pack",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "RedDec <net.dev@mail.ru>",
   "description": "Simple golang DEBIAN packager inspired by NPM",
   "arch": [
