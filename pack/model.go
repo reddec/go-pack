@@ -27,6 +27,7 @@ type Descriptor struct {
 	Author             string`json:"author"`
 	Description        string`json:"description"`
 	Depends            []string `json:"depends,omitempty"`
+	Architectures      []string `json:"arch,omitempty"`
 	BinName            string`json:"bin,omitempty"`
 	Service            *Service`json:"service,omitempty"`
 	Resources          string`json:"resources,omitempty"`
@@ -71,6 +72,9 @@ func (d *Descriptor) FillDefault() error {
 	}
 	if d.Description == "" {
 		d.Description = "{{.Group}} {{.Name}} built at " + time.Now().Format(time.RFC3339)
+	}
+	if len(d.Architectures) == 0 {
+		d.Architectures = append(d.Architectures, runtime.GOARCH)
 	}
 	if d.BinName == "" {
 		d.BinName = "{{.Group}}-{{.Name}}"

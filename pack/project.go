@@ -5,10 +5,9 @@ import (
 	"os/exec"
 	"path"
 	"encoding/json"
-
 	"strings"
 	"os/user"
-	"runtime"
+	"log"
 )
 
 
@@ -63,12 +62,7 @@ func (pr *Project) Make(resultDir string) error {
 	if err = os.MkdirAll(path.Dir(binFile), 0755); err != nil {
 		return err
 	}
-	cmdGoBuild := exec.Command("go", "build", "-o", binFile, pr.WorkDir)
-	cmdGoBuild.Stdout = os.Stdout
-	cmdGoBuild.Stderr = os.Stderr
-	if err = cmdGoBuild.Run(); err != nil {
-		return err
-	}
+
 
 
 
@@ -117,17 +111,28 @@ func (pr *Project) Make(resultDir string) error {
 	if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "control"), []byte(pr.Descriptor.Control()), 0755); err != nil {
 		return err
 	}
+	for _, arch := range pr.Descriptor.Architectures {
+		arch = strings.ToLower(arch)
+		log.Println("Building for", arch)
+		if err = os.Setenv("GOARCH", arch); err != nil {
+			return err
+		}
+		cmdGoBuild := exec.Command("go", "build", "-o", binFile, pr.WorkDir)
+		cmdGoBuild.Stdout = os.Stdout
+		cmdGoBuild.Stderr = os.Stderr
+		if err = cmdGoBuild.Run(); err != nil {
+			return err
+		}
 
 
+		cmdDpkgBuild := exec.Command("dpkg", "-b", dir, path.Join(resultDir, pr.Descriptor.BinName + "-" + pr.Descriptor.Version + "_" + arch + ".deb"))
+		cmdDpkgBuild.Stdout = os.Stdout
+		cmdDpkgBuild.Stderr = os.Stderr
+		if err = cmdDpkgBuild.Run(); err != nil {
+			return err
+		}
 
-	cmdDpkgBuild := exec.Command("dpkg", "-b", dir, path.Join(resultDir, pr.Descriptor.BinName + "-" + pr.Descriptor.Version + "_" + runtime.GOARCH + ".deb"))
-	cmdDpkgBuild.Stdout = os.Stdout
-	cmdDpkgBuild.Stderr = os.Stderr
-	if err = cmdDpkgBuild.Run(); err != nil {
-		return err
 	}
-
-
 
 	return nil
 }
