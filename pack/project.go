@@ -1,0 +1,190 @@
+package pack
+import (
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path"
+	"encoding/json"
+
+	"strings"
+	"os/user"
+	"runtime"
+)
+
+
+type Project struct {
+	Descriptor  Descriptor
+	PreInstall  []string
+	PostInstall []string
+	PreRemove   []string
+
+	WorkDir     string
+}
+
+
+func Read(file string) (Project, error) {
+	prj := Project{}
+	d, err := ioutil.ReadFile(file)
+	if err != nil {
+		return prj, err
+	}
+	err = json.Unmarshal(d, &(prj.Descriptor))
+	if err != nil {
+		return prj, err
+	}
+	prj.WorkDir = path.Dir(file)
+	return prj, nil
+}
+
+
+
+func (pr *Project) Make(resultDir string) error {
+	err := pr.Descriptor.FillDefault()
+	if err != nil {
+		return err
+	}
+	pr.Descriptor.FillTemplates()
+	dir, err := ioutil.TempDir("", "gopack")
+	if err != nil {
+		return err
+	}
+	resDir := path.Join(dir, pr.Descriptor.TargetResourcesDir)
+	defer os.RemoveAll(dir)
+	if st, err := os.Stat(pr.Descriptor.Resources); err == nil && st.IsDir() {
+		err = CopyDir(pr.Descriptor.Resources, resDir)
+		if err != nil {
+			return err
+		}
+	}else {
+		err = nil
+	}
+	binFile := path.Join(dir, pr.Descriptor.TargetBinDir, pr.Descriptor.BinName)
+	if err = os.MkdirAll(path.Dir(binFile), 0755); err != nil {
+		return err
+	}
+	cmdGoBuild := exec.Command("go", "build", "-o", binFile, pr.WorkDir)
+	cmdGoBuild.Stdout = os.Stdout
+	cmdGoBuild.Stderr = os.Stderr
+	if err = cmdGoBuild.Run(); err != nil {
+		return err
+	}
+
+
+
+	if pr.Descriptor.Service != nil {
+		sFile := path.Join(dir, pr.Descriptor.TargetServiceDir, pr.Descriptor.ServiceFile())
+		if err = os.MkdirAll(path.Dir(sFile), 0755); err != nil {
+			return err
+		}
+		if err = os.MkdirAll(path.Join(dir, pr.Descriptor.TargetConfDir), 0755); err != nil {
+			return err
+		}
+		if err = ioutil.WriteFile(sFile, []byte(pr.Descriptor.ServiceInit()), 0755); err != nil {
+			return err
+		}
+		if err = ioutil.WriteFile(path.Join(dir, pr.Descriptor.TargetConfDir, ServiceConfigFile), []byte(pr.Descriptor.ServiceConfig()), 0755); err != nil {
+			return err
+		}
+	}
+
+	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall())
+	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall())
+
+	// DO debian files
+	os.MkdirAll(path.Join(dir, "DEBIAN"), 0755)
+	if !isEmptyLines(pr.PreInstall) {
+		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "preinst"), []byte(makeScript(pr.PreInstall)), 0755); err != nil {
+			return err
+		}
+	}
+
+	if !isEmptyLines(pr.PostInstall) {
+		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "postinst"), []byte(makeScript(pr.PostInstall)), 0755); err != nil {
+			return err
+		}
+	}
+
+	if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "control"), []byte(pr.Descriptor.Control()), 0755); err != nil {
+		return err
+	}
+
+
+
+	cmdDpkgBuild := exec.Command("dpkg", "-b", dir, path.Join(resultDir, pr.Descriptor.BinName + "-" + pr.Descriptor.Version + "_" + runtime.GOARCH + ".deb"))
+	cmdDpkgBuild.Stdout = os.Stdout
+	cmdDpkgBuild.Stderr = os.Stderr
+	if err = cmdDpkgBuild.Run(); err != nil {
+		return err
+	}
+
+
+
+	return nil
+}
+
+func newApp(nameGroup string) (Descriptor, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return Descriptor{}, err
+	}
+	parts := strings.SplitN(nameGroup, "-", 2)
+	group := parts[0]
+	name := parts[0]
+	if len(parts) == 2 {
+		name = parts[1]
+	}
+	return Descriptor{
+		Name:name,
+		Group:group,
+		Author: usr.Name,
+		Version:"1.0.0",
+		Description: "Implementation of " + nameGroup    }, nil
+}
+
+func SaveNewApp(dir, packet string) error {
+	d, err := newApp(packet)
+	if err != nil {
+		return err
+	}
+	t, err := json.MarshalIndent(d, "", "    ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path.Join(dir, "package.json"), []byte(t), 0700)
+}
+func SaveNewService(dir, packet string) error {
+	d, err := newApp(packet)
+	if err != nil {
+		return err
+	}
+
+	d.Service = &Service{
+		AutoStart:true,
+		Restart:true,
+		RestartDelay:5,
+		Params:[]string{},
+		Env:map[string]string{},
+	}
+	t, err := json.MarshalIndent(d, "", "    ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path.Join(dir, "package.json"), []byte(t), 0700)
+}
+
+func makeScript(lines []string) string {
+	t := "#!/bin/bash"
+	for _, p := range lines {
+		t += "\n" + p
+	}
+	return t
+}
+
+func isEmptyLines(lines []string) bool {
+	for _, l := range lines {
+		if l != "" {
+			return false
+		}
+	}
+	return true
+}
