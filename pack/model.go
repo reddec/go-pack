@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"time"
 	"strings"
+	"strconv"
 )
 const ServiceConfigFile = "service.conf"
 type Service struct {
@@ -130,10 +131,17 @@ func (d *Descriptor) FillTemplates() {
 	d.mustTemplate(&(d.TargetConfDir))
 }
 
+func normalizeArch(arch string) string {
+	if _, err := strconv.ParseUint(arch, 10, 64); err != nil {
+		return arch
+	}
+	return "i" + arch
+}
+
 func (d *Descriptor) Control() string {
 	t := `Package: {{.Group}}-{{.Name}}
 Version: {{.Version}}
-Architecture: ` + runtime.GOARCH + `
+Architecture: ` + normalizeArch(runtime.GOARCH) + `
 Maintainer: {{.Author}}
 Description: {{.Description}}
 `
