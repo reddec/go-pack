@@ -26,9 +26,13 @@ type Descriptor struct {
 	Version            string`json:"version"`
 	Author             string`json:"author"`
 	Description        string`json:"description"`
+	Depends            []string `json:"depends,omitempty"`
 	BinName            string`json:"bin,omitempty"`
 	Service            *Service`json:"service,omitempty"`
 	Resources          string`json:"resources,omitempty"`
+	PreInst            string `json:"preinst"`
+	PostInst           string `json:"postinst"`
+	PreRm              string `json:"prerm"`
 	TargetResourcesDir string`json:"resourcesDir,omitempty"`
 	TargetBinDir       string`json:"binDir,omitempty"`
 	TargetConfDir      string`json:"confDir,omitempty"`
@@ -75,7 +79,7 @@ func (d *Descriptor) FillDefault() error {
 		d.Service.FillDefault()
 	}
 	if d.TargetResourcesDir == "" {
-		d.TargetResourcesDir = "/usr/local/{{.Group}}/{{.Name}}"
+		d.TargetResourcesDir = "/usr/local/share/{{.Group}}/{{.Name}}"
 	}
 	if d.TargetBinDir == "" {
 		d.TargetBinDir = "/usr/local/bin"
@@ -143,7 +147,11 @@ func (d *Descriptor) Control() string {
 Version: {{.Version}}
 Architecture: ` + normalizeArch(runtime.GOARCH) + `
 Maintainer: {{.Author}}
-Description: {{.Description}}
+`
+	if len(d.Depends) != 0 {
+		t += "Depends: " + strings.Join(d.Depends, ",") + "\n"
+	}
+	t += `Description: {{.Description}}
 `
 	d.mustTemplate(&t)
 	return t
@@ -165,6 +173,10 @@ func (d *Descriptor) PostInstall() string {
 		}
 	}
 	return t
+}
+
+func (d *Descriptor) PreRemove() string {
+	return d.PreInstall()
 }
 
 func (d *Descriptor) ServiceInit() string {

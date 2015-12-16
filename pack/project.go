@@ -16,6 +16,7 @@ type Project struct {
 	Descriptor  Descriptor
 	PreInstall  []string
 	PostInstall []string
+	PreRm       []string
 	PreRemove   []string
 
 	WorkDir     string
@@ -87,8 +88,11 @@ func (pr *Project) Make(resultDir string) error {
 		}
 	}
 
-	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall())
-	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall())
+	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall(), getFileOrScript(pr.Descriptor.PreInst))
+	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall(), getFileOrScript(pr.Descriptor.PostInst))
+	pr.PreRemove = append(pr.PreRemove, pr.Descriptor.PreRemove(), getFileOrScript(pr.Descriptor.PreRm))
+
+
 
 	// DO debian files
 	os.MkdirAll(path.Join(dir, "DEBIAN"), 0755)
@@ -100,6 +104,12 @@ func (pr *Project) Make(resultDir string) error {
 
 	if !isEmptyLines(pr.PostInstall) {
 		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "postinst"), []byte(makeScript(pr.PostInstall)), 0755); err != nil {
+			return err
+		}
+	}
+
+	if !isEmptyLines(pr.PreRemove) {
+		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "prerm"), []byte(makeScript(pr.PreRemove)), 0755); err != nil {
 			return err
 		}
 	}
@@ -187,4 +197,14 @@ func isEmptyLines(lines []string) bool {
 		}
 	}
 	return true
+}
+
+func getFileOrScript(line string) string {
+	if line == "" {
+		return ""
+	}
+	if content, err := ioutil.ReadFile(line); err == nil {
+		return string(content)
+	}
+	return line
 }
