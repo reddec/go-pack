@@ -31,9 +31,9 @@ type Descriptor struct {
 	BinName            string`json:"bin,omitempty"`
 	Service            *Service`json:"service,omitempty"`
 	Resources          string`json:"resources,omitempty"`
-	PreInst            string `json:"preinst"`
-	PostInst           string `json:"postinst"`
-	PreRm              string `json:"prerm"`
+	PreInst            string `json:"preinst,omitempty"`
+	PostInst           string `json:"postinst,omitempty"`
+	PreRm              string `json:"prerm,omitempty"`
 	TargetResourcesDir string`json:"resourcesDir,omitempty"`
 	TargetBinDir       string`json:"binDir,omitempty"`
 	TargetConfDir      string`json:"confDir,omitempty"`
