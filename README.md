@@ -1,7 +1,7 @@
 # go-pack
 Simple golang DEBIAN packager inspired by NPM
 
-## Initialize new 
+Checkout binary version [here](https://github.com/reddec/go-pack/releases)
 
 ### binary package
 
@@ -16,7 +16,7 @@ go-pack -c -s group-package_name
 Now only `upstart` is supported. `systemd` is one of main task for future releases
 
 
-## Build
+### Build
 
 Just run in directory with package.json
 
