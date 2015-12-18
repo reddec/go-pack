@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-
+// Project description
 type Project struct {
 	Descriptor  Descriptor
 	PreInstall  []string
@@ -22,7 +22,8 @@ type Project struct {
 }
 
 
-func Read(file string) (Project, error) {
+// Read package description from file
+func ReadPackage(file string) (Project, error) {
 	prj := Project{}
 	d, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -36,8 +37,7 @@ func Read(file string) (Project, error) {
 	return prj, nil
 }
 
-
-
+// Prepare and build DEB package into result directory
 func (pr *Project) Make(resultDir string) error {
 	err := pr.Descriptor.FillDefault()
 	if err != nil {
@@ -137,6 +137,7 @@ func (pr *Project) Make(resultDir string) error {
 	return nil
 }
 
+
 func newApp(nameGroup string) (Descriptor, error) {
 	usr, err := user.Current()
 	if err != nil {
@@ -156,6 +157,9 @@ func newApp(nameGroup string) (Descriptor, error) {
 		Description: "Implementation of " + nameGroup    }, nil
 }
 
+
+// Initialize new application and save package description to specified directory.
+// May parse package by following pattern: group-package_name
 func SaveNewApp(dir, packet string) error {
 	d, err := newApp(packet)
 	if err != nil {
@@ -167,6 +171,9 @@ func SaveNewApp(dir, packet string) error {
 	}
 	return ioutil.WriteFile(path.Join(dir, "package.json"), []byte(t), 0700)
 }
+
+// Initialize new application with service and save package description to specified directory.
+// May parse package by following pattern: group-package_name
 func SaveNewService(dir, packet string) error {
 	d, err := newApp(packet)
 	if err != nil {

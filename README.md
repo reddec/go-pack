@@ -5,7 +5,9 @@ Checkout binary version [here](https://github.com/reddec/go-pack/releases)
 
 ### binary package
 
-  go-pack -c group-package_name
+```
+go-pack -c group-package_name
+```
   
 ### upstart service
 

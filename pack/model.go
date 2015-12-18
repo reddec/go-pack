@@ -20,6 +20,7 @@ type Service struct {
 
 }
 
+// Full project description
 type Descriptor struct {
 	Group              string`json:"group"`
 	Name               string`json:"name"`
@@ -40,7 +41,7 @@ type Descriptor struct {
 	TargetServiceDir   string `json:"serviceDir,omitempty"`
 }
 
-
+// Fill default values for services
 func (s *Service) FillDefault() {
 	if s.TargetInit == "" {
 		s.TargetInit = "upstart"
@@ -49,7 +50,7 @@ func (s *Service) FillDefault() {
 	}
 }
 
-
+// Fill default fields in project description
 func (d *Descriptor) FillDefault() error {
 	if d.Resources == "" {
 		d.Resources = "resources"
@@ -97,6 +98,7 @@ func (d *Descriptor) FillDefault() error {
 	return nil
 }
 
+// Render template or fail
 func (d *Descriptor) mustTemplate(field *string) {
 	t, err := template.New("").Parse(*field)
 	if err != nil {
@@ -110,6 +112,8 @@ func (d *Descriptor) mustTemplate(field *string) {
 	*field = buf.String()
 }
 
+// Render all string fields as templates.
+// May panic if some templates are wrong
 func (d *Descriptor) FillTemplates() {
 	d.mustTemplate(&(d.Name))
 	d.mustTemplate(&(d.Resources))
@@ -135,6 +139,7 @@ func (d *Descriptor) FillTemplates() {
 	d.mustTemplate(&(d.TargetConfDir))
 }
 
+// Get DEBIAN architecture name
 func normalizeArch(arch string) string {
 	if _, err := strconv.ParseUint(arch, 10, 64); err != nil {
 		return arch
@@ -142,6 +147,7 @@ func normalizeArch(arch string) string {
 	return "i" + arch
 }
 
+// Content of Control file in DEB package
 func (d *Descriptor) Control() string {
 	t := `Package: {{.Group}}-{{.Name}}
 Version: {{.Version}}
@@ -157,6 +163,7 @@ Maintainer: {{.Author}}
 	return t
 }
 
+// Content of pre-install script
 func (d *Descriptor) PreInstall() string {
 	t := ""
 	if d.Service != nil {
@@ -175,6 +182,7 @@ fi
 	return t
 }
 
+// Content of post-install script
 func (d *Descriptor) PostInstall() string {
 	t := ""
 	if d.Service != nil {
@@ -191,10 +199,12 @@ fi
 	return t
 }
 
+// Content of pre-remove script
 func (d *Descriptor) PreRemove() string {
 	return d.PreInstall()
 }
 
+// Content of service .conf file for init system
 func (d *Descriptor) ServiceInit() string {
 	t := `# {{.Group}} {{.Name}}
 
@@ -215,11 +225,13 @@ end script
 	return mustTemplate(t, *d)
 }
 
+// Service filename in init system
 func (d *Descriptor) ServiceFile() string {
 	t := `{{.Group}}-{{.Name}}.conf`
 	return mustTemplate(t, *d)
 }
 
+// Content of configuration file for service
 func (d *Descriptor) ServiceConfig() string {
 	t := `#!/bin/bash
 {{ range $key, $value := .Service.Env}}
@@ -227,8 +239,6 @@ func (d *Descriptor) ServiceConfig() string {
 `
 	return mustTemplate(t, *d) + "RUN_OPTS=\"" + d.Service.RunOpts + "\""
 }
-
-
 
 func mustTemplate(pattern string, params interface{}) string {
 	t, err := template.New("").Parse(pattern)
