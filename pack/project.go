@@ -10,15 +10,23 @@ import (
 	"log"
 )
 
+const (
+	ProjectPackageFile = "package.json"
+
+)
+const (
+	projectTempPrefix = "gopack"
+)
+
 // Project description
 type Project struct {
-	Descriptor  Descriptor
-	PreInstall  []string
-	PostInstall []string
-	PreRm       []string
-	PreRemove   []string
-
-	WorkDir     string
+	Descriptor   Descriptor
+	PreInstall   []string
+	PostInstall  []string
+	PreRm        []string
+	PreRemove    []string
+	ReleaseNotes string
+	WorkDir      string
 }
 
 
@@ -46,7 +54,7 @@ func (pr *Project) Make(resultDir string) error {
 		return err
 	}
 	pr.Descriptor.FillTemplates()
-	dir, err := ioutil.TempDir("", "gopack")
+	dir, err := ioutil.TempDir("", projectTempPrefix)
 	if err != nil {
 		return err
 	}
@@ -64,6 +72,7 @@ func (pr *Project) Make(resultDir string) error {
 			return err
 		}
 	}
+	pr.makeReleaseNotes()
 	if err = pr.makeControlFiles(dir); err != nil {
 		return err
 	}
@@ -143,10 +152,29 @@ func (pr *Project) makeControlFiles(tmpDir string) error {
 		}
 	}
 
+	if pr.ReleaseNotes != "" {
+		if err := ioutil.WriteFile(path.Join(tmpDir, "DEBIAN", "changelog"), []byte(pr.ReleaseNotes), 0700); err != nil {
+			return err
+		}
+	}
+
+
 	if err := ioutil.WriteFile(path.Join(tmpDir, "DEBIAN", "control"), []byte(pr.Descriptor.Control()), 0755); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (pr *Project) makeReleaseNotes() {
+	cmd := exec.Command("git", "log", pr.WorkDir)
+	cmd.Stderr = os.Stderr
+	data, err := cmd.Output()
+	if err != nil || !cmd.ProcessState.Success() {
+		//silent error
+		log.Println("failed git log", err)
+		return
+	}
+	pr.ReleaseNotes = strings.TrimSpace(string(data))
 }
 
 func (pr *Project) makeResources(tmpDir string) error {
@@ -191,7 +219,7 @@ func SaveNewApp(dir, packet string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path.Join(dir, "package.json"), []byte(t), 0700)
+	return ioutil.WriteFile(path.Join(dir, ProjectPackageFile), []byte(t), 0700)
 }
 
 // Initialize new application with service and save package description to specified directory.
@@ -213,7 +241,7 @@ func SaveNewService(dir, packet string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path.Join(dir, "package.json"), []byte(t), 0700)
+	return ioutil.WriteFile(path.Join(dir, ProjectPackageFile), []byte(t), 0700)
 }
 
 func makeScript(lines []string) string {
