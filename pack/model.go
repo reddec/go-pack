@@ -1,7 +1,5 @@
 package pack
 import (
-	"text/template"
-	"bytes"
 	"errors"
 	"runtime"
 	"os/user"

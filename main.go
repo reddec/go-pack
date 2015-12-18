@@ -30,7 +30,7 @@ func main() {
 
 
 	log.Println("Building")
-	p, err := pack.Read(path.Join(*dir, "package.json"))
+	p, err := pack.ReadPackage(path.Join(*dir, "package.json"))
 	if err != nil {
 		panic(err)
 	}
