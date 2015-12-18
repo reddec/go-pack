@@ -4,6 +4,8 @@ import (
 	"io/ioutil"
 	"log"
 	"io"
+	"bytes"
+"text/template"
 )
 // Copies file source to destination dest.
 func CopyFile(source string, dest string) (err error) {
@@ -81,4 +83,33 @@ type CustomError struct {
 // Returns the error message defined in What as a string
 func (e *CustomError) Error() string {
 	return e.What
+}
+
+
+// Render template or fail
+func (d *Descriptor) mustTemplate(field *string) {
+	t, err := template.New("").Parse(*field)
+	if err != nil {
+		panic("Failed parse templates in " + (*field) + ": " + err.Error())
+	}
+	buf := new(bytes.Buffer)
+	err = t.Execute(buf, (*d))
+	if err != nil {
+		panic("Failed execute templates in " + (*field) + ": " + err.Error())
+	}
+	*field = buf.String()
+}
+
+
+func mustTemplate(pattern string, params interface{}) string {
+	t, err := template.New("").Parse(pattern)
+	if err != nil {
+		panic("Failed parse templates in " + (pattern) + ": " + err.Error())
+	}
+	buf := new(bytes.Buffer)
+	err = t.Execute(buf, params)
+	if err != nil {
+		panic("Failed execute templates in " + (pattern) + ": " + err.Error())
+	}
+	return buf.String()
 }

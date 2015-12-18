@@ -17,7 +17,6 @@ type Service struct {
 	AutoStart    bool`json:"autostart"`
 	RestartDelay int`json:"restartDelay"`
 	TargetInit   string`json:"target,omitempty"`
-
 }
 
 // Full project description
@@ -41,14 +40,6 @@ type Descriptor struct {
 	TargetServiceDir   string `json:"serviceDir,omitempty"`
 }
 
-// Fill default values for services
-func (s *Service) FillDefault() {
-	if s.TargetInit == "" {
-		s.TargetInit = "upstart"
-	}else if s.TargetInit != "upstart" {
-		panic("Only 'upstart' target init system is allowed for services")
-	}
-}
 
 // Fill default fields in project description
 func (d *Descriptor) FillDefault() error {
@@ -98,19 +89,15 @@ func (d *Descriptor) FillDefault() error {
 	return nil
 }
 
-// Render template or fail
-func (d *Descriptor) mustTemplate(field *string) {
-	t, err := template.New("").Parse(*field)
-	if err != nil {
-		panic("Failed parse templates in " + (*field) + ": " + err.Error())
+// Fill default values for services
+func (s *Service) FillDefault() {
+	if s.TargetInit == "" {
+		s.TargetInit = "upstart"
+	}else if s.TargetInit != "upstart" {
+		panic("Only 'upstart' target init system is allowed for services")
 	}
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, (*d))
-	if err != nil {
-		panic("Failed execute templates in " + (*field) + ": " + err.Error())
-	}
-	*field = buf.String()
 }
+
 
 // Render all string fields as templates.
 // May panic if some templates are wrong
@@ -238,17 +225,4 @@ func (d *Descriptor) ServiceConfig() string {
 {{$key}}="{{$value}}"{{end}}
 `
 	return mustTemplate(t, *d) + "RUN_OPTS=\"" + d.Service.RunOpts + "\""
-}
-
-func mustTemplate(pattern string, params interface{}) string {
-	t, err := template.New("").Parse(pattern)
-	if err != nil {
-		panic("Failed parse templates in " + (pattern) + ": " + err.Error())
-	}
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, params)
-	if err != nil {
-		panic("Failed execute templates in " + (pattern) + ": " + err.Error())
-	}
-	return buf.String()
 }

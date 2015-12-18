@@ -37,6 +37,8 @@ func ReadPackage(file string) (Project, error) {
 	return prj, nil
 }
 
+
+
 // Prepare and build DEB package into result directory
 func (pr *Project) Make(resultDir string) error {
 	err := pr.Descriptor.FillDefault()
@@ -48,69 +50,28 @@ func (pr *Project) Make(resultDir string) error {
 	if err != nil {
 		return err
 	}
-	resDir := path.Join(dir, pr.Descriptor.TargetResourcesDir)
 	defer os.RemoveAll(dir)
-	if st, err := os.Stat(pr.Descriptor.Resources); err == nil && st.IsDir() {
-		err = CopyDir(pr.Descriptor.Resources, resDir)
-		if err != nil {
-			return err
-		}
-	}else {
-		err = nil
-	}
 	binFile := path.Join(dir, pr.Descriptor.TargetBinDir, pr.Descriptor.BinName)
 	if err = os.MkdirAll(path.Dir(binFile), 0755); err != nil {
 		return err
 	}
 
-
-
-
+	if err = pr.makeResources(dir); err != nil {
+		return err
+	}
 	if pr.Descriptor.Service != nil {
-		sFile := path.Join(dir, pr.Descriptor.TargetServiceDir, pr.Descriptor.ServiceFile())
-		if err = os.MkdirAll(path.Dir(sFile), 0755); err != nil {
+		if err = pr.makeService(dir); err != nil {
 			return err
 		}
-		if err = os.MkdirAll(path.Join(dir, pr.Descriptor.TargetConfDir), 0755); err != nil {
-			return err
-		}
-		if err = ioutil.WriteFile(sFile, []byte(pr.Descriptor.ServiceInit()), 0755); err != nil {
-			return err
-		}
-		if err = ioutil.WriteFile(path.Join(dir, pr.Descriptor.TargetConfDir, ServiceConfigFile), []byte(pr.Descriptor.ServiceConfig()), 0755); err != nil {
-			return err
-		}
+	}
+	if err = pr.makeControlFiles(dir); err != nil {
+		return err
 	}
 
 	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PreInst), pr.Descriptor))
 	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PostInst), pr.Descriptor))
 	pr.PreRemove = append(pr.PreRemove, pr.Descriptor.PreRemove(), mustTemplate(getFileOrScript(pr.Descriptor.PreRm), pr.Descriptor))
 
-
-
-	// DO debian files
-	os.MkdirAll(path.Join(dir, "DEBIAN"), 0755)
-	if !isEmptyLines(pr.PreInstall) {
-		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "preinst"), []byte(makeScript(pr.PreInstall)), 0755); err != nil {
-			return err
-		}
-	}
-
-	if !isEmptyLines(pr.PostInstall) {
-		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "postinst"), []byte(makeScript(pr.PostInstall)), 0755); err != nil {
-			return err
-		}
-	}
-
-	if !isEmptyLines(pr.PreRemove) {
-		if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "prerm"), []byte(makeScript(pr.PreRemove)), 0755); err != nil {
-			return err
-		}
-	}
-
-	if err = ioutil.WriteFile(path.Join(dir, "DEBIAN", "control"), []byte(pr.Descriptor.Control()), 0755); err != nil {
-		return err
-	}
 	for _, arch := range pr.Descriptor.Architectures {
 		arch = strings.ToLower(arch)
 		log.Println("Building for", arch)
@@ -123,8 +84,7 @@ func (pr *Project) Make(resultDir string) error {
 		if err = cmdGoBuild.Run(); err != nil {
 			return err
 		}
-
-
+		
 		cmdDpkgBuild := exec.Command("dpkg", "-b", dir, path.Join(resultDir, pr.Descriptor.BinName + "-" + pr.Descriptor.Version + "_" + arch + ".deb"))
 		cmdDpkgBuild.Stdout = os.Stdout
 		cmdDpkgBuild.Stderr = os.Stderr
@@ -137,6 +97,60 @@ func (pr *Project) Make(resultDir string) error {
 	return nil
 }
 
+func (pr *Project) makeService(tmpDir string) error {
+	sFile := path.Join(tmpDir, pr.Descriptor.TargetServiceDir, pr.Descriptor.ServiceFile())
+	if err := os.MkdirAll(path.Dir(sFile), 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(path.Join(tmpDir, pr.Descriptor.TargetConfDir), 0755); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(sFile, []byte(pr.Descriptor.ServiceInit()), 0755); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(path.Join(tmpDir, pr.Descriptor.TargetConfDir, ServiceConfigFile), []byte(pr.Descriptor.ServiceConfig()), 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pr *Project) makeControlFiles(tmpDir string) error {
+	// DO debian files
+	os.MkdirAll(path.Join(tmpDir, "DEBIAN"), 0755)
+	if !isEmptyLines(pr.PreInstall) {
+		if err := ioutil.WriteFile(path.Join(tmpDir, "DEBIAN", "preinst"), []byte(makeScript(pr.PreInstall)), 0755); err != nil {
+			return err
+		}
+	}
+
+	if !isEmptyLines(pr.PostInstall) {
+		if err := ioutil.WriteFile(path.Join(tmpDir, "DEBIAN", "postinst"), []byte(makeScript(pr.PostInstall)), 0755); err != nil {
+			return err
+		}
+	}
+
+	if !isEmptyLines(pr.PreRemove) {
+		if err := ioutil.WriteFile(path.Join(tmpDir, "DEBIAN", "prerm"), []byte(makeScript(pr.PreRemove)), 0755); err != nil {
+			return err
+		}
+	}
+
+	if err := ioutil.WriteFile(path.Join(tmpDir, "DEBIAN", "control"), []byte(pr.Descriptor.Control()), 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pr *Project) makeResources(tmpDir string) error {
+	resDir := path.Join(tmpDir, pr.Descriptor.TargetResourcesDir)
+	if st, err := os.Stat(pr.Descriptor.Resources); err == nil && st.IsDir() {
+		err = CopyDir(pr.Descriptor.Resources, resDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func newApp(nameGroup string) (Descriptor, error) {
 	usr, err := user.Current()
