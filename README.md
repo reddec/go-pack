@@ -1,5 +1,12 @@
 # go-pack
-Simple golang DEBIAN packager inspired by NPM
+Simple golang DEBIAN packager inspired by NPM.
+
+Features:
+
+* build a single binary application
+* build a binary `upstart` service
+* package to DEB
+* single configuration in one file
 
 Checkout binary version [here](https://github.com/reddec/go-pack/releases)
 
