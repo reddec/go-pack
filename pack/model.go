@@ -220,7 +220,7 @@ func (d *Descriptor) ServiceFile() string {
 func (d *Descriptor) ServiceConfig() string {
 	t := `#!/bin/bash
 {{ range $key, $value := .Service.Env}}
-{{$key}}="{{$value}}"{{end}}
+export {{$key}}="{{$value}}"{{end}}
 `
 	return mustTemplate(t, *d) + "RUN_OPTS=\"" + d.Service.RunOpts + "\""
 }
