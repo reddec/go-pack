@@ -72,19 +72,27 @@ func (pr *Project) Make(resultDir string) error {
 	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PostInst), pr.Descriptor))
 	pr.PreRemove = append(pr.PreRemove, pr.Descriptor.PreRemove(), mustTemplate(getFileOrScript(pr.Descriptor.PreRm), pr.Descriptor))
 
+	cmdGoGet := exec.Command("go", "get", pr.WorkDir)
+	cmdGoGet.Stdout = os.Stdout
+	cmdGoGet.Stderr = os.Stderr
+	if err = cmdGoGet.Run(); err != nil {
+		return err
+	}
+
 	for _, arch := range pr.Descriptor.Architectures {
 		arch = strings.ToLower(arch)
 		log.Println("Building for", arch)
 		if err = os.Setenv("GOARCH", arch); err != nil {
 			return err
 		}
+
 		cmdGoBuild := exec.Command("go", "build", "-o", binFile, pr.WorkDir)
 		cmdGoBuild.Stdout = os.Stdout
 		cmdGoBuild.Stderr = os.Stderr
 		if err = cmdGoBuild.Run(); err != nil {
 			return err
 		}
-		
+
 		cmdDpkgBuild := exec.Command("dpkg", "-b", dir, path.Join(resultDir, pr.Descriptor.BinName + "-" + pr.Descriptor.Version + "_" + arch + ".deb"))
 		cmdDpkgBuild.Stdout = os.Stdout
 		cmdDpkgBuild.Stderr = os.Stderr
