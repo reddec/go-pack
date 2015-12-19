@@ -108,7 +108,9 @@ func (d *Descriptor) FillTemplates() {
 	d.mustTemplate(&(d.Description))
 	d.mustTemplate(&(d.Author))
 	d.mustTemplate(&(d.TargetServiceDir))
-
+	d.mustTemplate(&(d.TargetResourcesDir))
+	d.mustTemplate(&(d.TargetBinDir))
+	d.mustTemplate(&(d.TargetConfDir))
 	if d.Service != nil {
 		d.mustTemplate(&(d.Service.TargetInit))
 		for k, v := range d.Service.Env {
@@ -119,9 +121,7 @@ func (d *Descriptor) FillTemplates() {
 		d.Service.RunOpts = mustTemplate(d.Service.RunOpts, *d)
 	}
 
-	d.mustTemplate(&(d.TargetResourcesDir))
-	d.mustTemplate(&(d.TargetBinDir))
-	d.mustTemplate(&(d.TargetConfDir))
+
 }
 
 // Get DEBIAN architecture name
