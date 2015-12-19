@@ -73,13 +73,14 @@ func (pr *Project) Make(resultDir string) error {
 		}
 	}
 	pr.makeReleaseNotes()
-	if err = pr.makeControlFiles(dir); err != nil {
-		return err
-	}
-
+	
 	pr.PreInstall = append(pr.PreInstall, pr.Descriptor.PreInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PreInst), pr.Descriptor))
 	pr.PostInstall = append(pr.PostInstall, pr.Descriptor.PostInstall(), mustTemplate(getFileOrScript(pr.Descriptor.PostInst), pr.Descriptor))
 	pr.PreRemove = append(pr.PreRemove, pr.Descriptor.PreRemove(), mustTemplate(getFileOrScript(pr.Descriptor.PreRm), pr.Descriptor))
+
+	if err = pr.makeControlFiles(dir); err != nil {
+		return err
+	}
 
 	cmdGoGet := exec.Command("go", "get", pr.WorkDir)
 	cmdGoGet.Stdout = os.Stdout
