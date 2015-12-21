@@ -204,7 +204,7 @@ respawn limit 99999999 {{.Service.RestartDelay}}
 
 script
   . {{.TargetConfDir}}/` + ServiceConfigFile + `
-  exec {{.TargetBinDir}}/{{.BinName}} $RUN_OPTS | logger -t '{{.Group}}-{{.Name}}' 2>&1
+  exec {{.TargetBinDir}}/{{.BinName}} {{.Service.RunOpts}} | logger -t '{{.Group}}-{{.Name}}' 2>&1
 end script
 `
 	return mustTemplate(t, *d)
@@ -222,5 +222,5 @@ func (d *Descriptor) ServiceConfig() string {
 {{ range $key, $value := .Service.Env}}
 export {{$key}}="{{$value}}"{{end}}
 `
-	return mustTemplate(t, *d) + "RUN_OPTS=\"" + d.Service.RunOpts + "\""
+	return mustTemplate(t, *d)
 }
