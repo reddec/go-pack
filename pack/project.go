@@ -8,6 +8,8 @@ import (
 	"strings"
 	"os/user"
 	"log"
+	"time"
+	"strconv"
 )
 
 const (
@@ -208,6 +210,31 @@ func newApp(nameGroup string) (Descriptor, error) {
 		Description: "Implementation of " + nameGroup    }, nil
 }
 
+func makeMain(dir string, d Descriptor) error {
+	if _, err := os.Stat(path.Join(dir, "main.go")); os.IsNotExist(err) {
+		return ioutil.WriteFile(path.Join(dir, "main.go"), []byte(`package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+func main() {
+	version := flag.Bool("version", false, "Show version")
+	flag.Parse()
+
+	if *version {
+	    fmt.Println("Copyright", "` + d.Author + `", ` + strconv.Itoa(time.Now().Year()) + `)
+	    fmt.Println("Created:", "` + time.Now().String() + `")
+	    fmt.Println("")
+	    fmt.Println(` + "`" + d.Description + "`" + `)
+	    return
+	}
+}`), 0700)
+	}
+	return nil
+}
+
 
 // Initialize new application and save package description to specified directory.
 // May parse package by following pattern: group-package_name
@@ -220,7 +247,11 @@ func SaveNewApp(dir, packet string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path.Join(dir, ProjectPackageFile), []byte(t), 0700)
+	err = ioutil.WriteFile(path.Join(dir, ProjectPackageFile), []byte(t), 0700)
+	if err != nil {
+		return err
+	}
+	return makeMain(dir, d)
 }
 
 // Initialize new application with service and save package description to specified directory.
@@ -242,7 +273,11 @@ func SaveNewService(dir, packet string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path.Join(dir, ProjectPackageFile), []byte(t), 0700)
+	err = ioutil.WriteFile(path.Join(dir, ProjectPackageFile), []byte(t), 0700)
+	if err != nil {
+		return err
+	}
+	return makeMain(dir, d)
 }
 
 func makeScript(lines []string) string {
