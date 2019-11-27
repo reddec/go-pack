@@ -1,4 +1,7 @@
 # go-pack
+
+>> This project no more active. Use [goreleaser](https://github.com/goreleaser/goreleaser) instead
+
 Simple golang DEBIAN packager inspired by NPM.
 
 Features:
